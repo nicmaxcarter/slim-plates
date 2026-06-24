@@ -1,0 +1,24 @@
+<?php
+
+declare(strict_types=1);
+
+namespace NicmaxCarter\SlimPlates\Bootstrap;
+
+use League\Plates\Engine;
+use NicmaxCarter\SlimPlates\AssetHelper;
+
+/**
+ * Register Plates template functions provided by the slim-plates package.
+ */
+class PlatesBootstrap
+{
+    /**
+     * Register $this->asset('bundle.js') using AssetHelper.
+     */
+    public static function registerAsset(Engine $plates, AssetHelper $helper): void
+    {
+        $plates->registerFunction('asset', function (string $logicalName) use ($helper): string {
+            return $helper->url($logicalName);
+        });
+    }
+}
