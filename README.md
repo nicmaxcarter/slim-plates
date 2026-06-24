@@ -54,14 +54,12 @@ AssetHelper::class => function (ContainerInterface $container) {
         $baseUrl = rtrim($cdn, '/') . '/assets/';
     }
 
-    $manifestPath = ($settings['debug'] ?? false) === true
-        ? null
-        : $rootPath . '/public/assets/manifest.json';
+    $assetsDirectory = $rootPath . '/public/assets';
 
     return new AssetHelper(
-        manifestPath: $manifestPath,
+        manifestPath: $assetsDirectory . '/manifest.json',
         baseUrl: $baseUrl,
-        queryVersion: $settings['assetversion'] ?? null,
+        assetsDirectory: $assetsDirectory,
     );
 },
 ```
@@ -89,7 +87,7 @@ PlatesBootstrap::registerAsset($platesView->getEngine(), $assetHelper);
 <script src="<?=$this->asset('bundle.js')?>"></script>
 ```
 
-**Tip:** pass `manifestPath: null` when `$settings['debug']` is true so a leftover production manifest does not point at hashed files while `npm run dev` serves stable names.
+**Tip:** `npm run dev` removes `manifest.json` so PHP falls back to stable filenames while webpack watch runs.
 
 ---
 
@@ -97,15 +95,15 @@ PlatesBootstrap::registerAsset($platesView->getEngine(), $assetHelper);
 
 Resolution order for `$this->asset('bundle.js')`:
 
-1. **Manifest lookup** — if `manifest.json` exists and contains `bundle.js`, use the hashed filename (e.g. `bundle.a1b2c3d4.js`).
-2. **Fallback** — return the logical name (`bundle.js`) so dev and static-only apps work without a build step.
-3. **Optional query version** — if `queryVersion` is configured and the asset was **not** found in the manifest, append `?v=…` for cache busting (useful for static files outside the manifest, e.g. favicon).
+1. **Manifest lookup** — if `manifest.json` maps to a file that exists on disk (or CDN-only with no disk checks), use the hashed filename.
+2. **Fallback** — return the logical name (`bundle.js`).
 
 | Scenario | Manifest | Result |
 |----------|----------|--------|
 | Production deploy after `npm run build` | Present | `/assets/bundle.a1b2c3d4.js` |
-| Local dev (`npm run dev`, debug mode) | Ignored (pass `null` manifest path) | `/assets/bundle.js` |
-| Static-only app (no npm) | Absent | `/assets/bundle.js` (+ `?v=` if configured) |
+| Local dev (`npm run dev`) | Removed by dev script | `/assets/bundle.js` |
+| After `npm run build` (local) | Used when only hashed files exist | `/assets/bundle.a1b2c3d4.js` |
+| Static-only app (no npm) | Absent | `/assets/bundle.js` |
 | CDN in production | Present | `https://cdn.example.com/assets/bundle.a1b2c3d4.js` |
 
 No “uses npm” flag is required. Missing or unreadable manifest files are treated as an empty manifest (safe fallback).
@@ -114,9 +112,10 @@ No “uses npm” flag is required. Missing or unreadable manifest files are tre
 
 | Parameter | Default | Purpose |
 |-----------|---------|---------|
-| `$manifestPath` | `null` | Absolute path to `manifest.json`; `null` disables manifest reads |
+| `$manifestPath` | `null` | Absolute path to `manifest.json`; unreadable/missing file is treated as empty |
 | `$baseUrl` | `'/assets/'` | URL prefix; set to CDN base + `/assets/` when serving from a CDN |
-| `$queryVersion` | `null` | Optional string appended as `?v=` for non-manifest assets only |
+| `$assetsDirectory` | `null` | When set, manifest entries are used only if the mapped file exists on disk; pass `null` only for CDN-only deploys with no local copy |
+| `$queryVersion` | `null` | Optional string appended as `?v=` for unresolved logical assets only |
 
 ---
 

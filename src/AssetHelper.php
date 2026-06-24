@@ -7,9 +7,8 @@ namespace NicmaxCarter\SlimPlates;
 /**
  * Resolve logical asset names to public URLs using an optional build manifest.
  *
- * Production builds can emit manifest.json mapping logical names (bundle.js)
- * to content-hashed filenames (bundle.a1b2c3d4.js). When no manifest exists,
- * logical names are used as-is so dev and static-only apps keep working.
+ * Prefers manifest-mapped filenames when present on disk (npm run build).
+ * Falls back to logical names when manifest is missing or stale (npm run dev).
  */
 class AssetHelper
 {
@@ -23,11 +22,13 @@ class AssetHelper
     /**
      * @param string|null $manifestPath Absolute path to manifest.json, or null to disable
      * @param string $baseUrl URL prefix, e.g. /assets/ or https://cdn.example.com/assets/
+     * @param string|null $assetsDirectory Absolute path to assets on disk for existence checks; null skips checks
      * @param string|null $queryVersion Optional ?v= value for assets not resolved via manifest
      */
     public function __construct(
         private readonly ?string $manifestPath = null,
         string $baseUrl = '/assets/',
+        private readonly ?string $assetsDirectory = null,
         private readonly ?string $queryVersion = null,
     ) {
         $this->normalizedBaseUrl = $this->normalizeBaseUrl($baseUrl);
@@ -42,7 +43,7 @@ class AssetHelper
         $filename = $this->resolveFilename($logicalName);
         $url = $this->normalizedBaseUrl . $filename;
 
-        if ($this->shouldAppendQueryVersion($logicalName)) {
+        if ($this->shouldAppendQueryVersion($logicalName, $filename)) {
             $url .= '?v=' . rawurlencode($this->queryVersion ?? '');
         }
 
@@ -61,21 +62,38 @@ class AssetHelper
         $manifest = $this->getManifest();
 
         if (isset($manifest[$logicalName])) {
-            return $this->sanitizeManifestValue($manifest[$logicalName]);
+            $hashed = $this->sanitizeManifestValue($manifest[$logicalName]);
+
+            if ($this->assetsDirectory === null || $this->assetExistsOnDisk($hashed)) {
+                return $hashed;
+            }
         }
 
         return $logicalName;
     }
 
-    private function shouldAppendQueryVersion(string $logicalName): bool
+    private function shouldAppendQueryVersion(string $logicalName, string $resolvedFilename): bool
     {
         if ($this->queryVersion === null || $this->queryVersion === '') {
             return false;
         }
 
-        $manifest = $this->getManifest();
+        if ($resolvedFilename !== $logicalName) {
+            return false;
+        }
 
-        return !isset($manifest[$logicalName]);
+        return !isset($this->getManifest()[$logicalName]);
+    }
+
+    private function assetExistsOnDisk(string $filename): bool
+    {
+        if ($this->assetsDirectory === null || $this->assetsDirectory === '') {
+            return false;
+        }
+
+        $path = $this->assetsDirectory . DIRECTORY_SEPARATOR . $filename;
+
+        return is_file($path);
     }
 
     private function sanitizeManifestValue(string $value): string
