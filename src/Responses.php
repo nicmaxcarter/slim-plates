@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace NicmaxCarter\SlimPlates;
 
 use InvalidArgumentException;
+use NicmaxCarter\SlimPlates\Flash\FlashToastKeys;
 use Psr\Http\Message\ResponseInterface as Response;
+use Slim\Flash\Messages;
 
 /**
  * Fixi response helpers using HX-* header names consumed by app JS bridges (fx:swapped).
@@ -90,6 +92,33 @@ final class Responses
     public static function withTriggerValue(Response $response, string $triggerValue): Response
     {
         return $response->withHeader(self::HEADER_TRIGGER, $triggerValue);
+    }
+
+    /**
+     * Redirect after POST (PRG) and show a toast on the next full page load via Slim Flash.
+     */
+    public static function redirectWithToast(
+        Response $response,
+        string $url,
+        string $message,
+        string $type,
+        Messages $flash,
+    ): Response {
+        $flashKey = match ($type) {
+            FlashToastKeys::ERROR => FlashToastKeys::ERROR,
+            FlashToastKeys::INFO => FlashToastKeys::INFO,
+            FlashToastKeys::WARNING => FlashToastKeys::WARNING,
+            FlashToastKeys::SUCCESS => FlashToastKeys::SUCCESS,
+            default => throw new InvalidArgumentException(
+                'Toast type must be success, error, info, or warning'
+            ),
+        };
+
+        $flash->addMessage($flashKey, $message);
+
+        return $response
+            ->withStatus(302)
+            ->withHeader('Location', $url);
     }
 
     private static function toastEventName(string $type): string

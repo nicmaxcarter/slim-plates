@@ -21,4 +21,13 @@ class PlatesBootstrap
             return $helper->url($logicalName);
         });
     }
+
+    /**
+     * Register the bridge views folder for shared partials (e.g. flash-toasts).
+     */
+    public static function registerFlashToasts(Engine $plates): void
+    {
+        $viewsPath = dirname(__DIR__, 2) . '/views';
+        $plates->addFolder('bridge', $viewsPath);
+    }
 }

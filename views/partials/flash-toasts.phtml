@@ -1,0 +1,12 @@
+<?php if ($flash->getMessage('info')): ?>
+<meta name="flash-info" content="<?=$this->e($flash->getMessage('info')[0])?>">
+<?php endif ?>
+<?php if ($flash->getMessage('success')): ?>
+<meta name="flash-success" content="<?=$this->e($flash->getMessage('success')[0])?>">
+<?php endif ?>
+<?php if ($flash->getMessage('error')): ?>
+<meta name="flash-error" content="<?=$this->e($flash->getMessage('error')[0])?>">
+<?php endif ?>
+<?php if ($flash->getMessage('warning')): ?>
+<meta name="flash-warning" content="<?=$this->e($flash->getMessage('warning')[0])?>">
+<?php endif ?>
