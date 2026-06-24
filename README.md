@@ -181,6 +181,7 @@ Deploy hashed files and `manifest.json` to the CDN alongside (or instead of) the
 - [ ] Register `Engine` / `PlatesView` in DI
 - [ ] Register `AssetHelper` with `manifestPath`, `baseUrl`, optional `queryVersion`
 - [ ] Call `PlatesBootstrap::registerAsset()` after container build
+- [ ] Call `PlatesBootstrap::registerFlashToasts()` after container build (redirect toast partial)
 - [ ] Call `$platesView->registerUrlFor($routeParser)` for named routes
 - [ ] Add app `ViewContextMiddleware` extending `AbstractViewContextMiddleware` (see below)
 - [ ] Register middleware in `conf/middleware.php`
@@ -205,7 +206,32 @@ Documented for cross-project consistency. Listeners live in each app's `frontend
 | `notifyError` | `Responses::withToast(…, 'error')` | App `notifications.js` |
 | `launchModal` | `Responses::launchModal()` | App `modalFunctions.js` |
 
-See `Responses` in `src/Responses.php` for `withTriggers()`, `withToast()`, `launchModal()`, `launchModalWithToast()`, and `toastOnly()`.
+See `Responses` in `src/Responses.php` for `withTriggers()`, `withToast()`, `launchModal()`, `launchModalWithToast()`, `toastOnly()`, and `redirectWithToast()`.
+
+---
+
+## Redirect flash toasts (Phase 4)
+
+For full-page POST → redirect flows (login, PRG forms), response headers are not available to JavaScript. Use Slim Flash instead:
+
+```php
+use NicmaxCarter\SlimPlates\Flash\FlashToastKeys;
+use NicmaxCarter\SlimPlates\Responses;
+
+return Responses::redirectWithToast(
+    $response,
+    '/dash',
+    'Welcome back',
+    FlashToastKeys::SUCCESS,
+    $flash,
+);
+```
+
+**Package:** `FlashToastKeys`, `redirectWithToast()`, `bridge::partials/flash-toasts` (meta tags only).
+
+**App:** Register `$flash` in Plates globals; insert the partial in layout `<head>`; implement `flashToasts.js` (or equivalent) to read meta tags and call your toast helpers on page load. Redirect to the final HTML page — intermediate 302s clear flash before the toast runs.
+
+See minister-manager `docs/DEVELOPMENT_GUIDELINES.md` for the full pattern.
 
 ---
 
