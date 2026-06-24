@@ -201,7 +201,7 @@ Documented for cross-project consistency. Listeners live in each app's `frontend
 | `notifyError` | `Responses::withToast(…, 'error')` | App `notifications.js` |
 | `launchModal` | `Responses::launchModal()` | App `modalFunctions.js` |
 
-*(Responses helpers — Phase 2 of the bridge plan.)*
+See `Responses` in `src/Responses.php` for `withTriggers()`, `withToast()`, `launchModal()`, `launchModalWithToast()`, and `toastOnly()`.
 
 ---
 
