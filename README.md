@@ -11,7 +11,9 @@ PHP bridge for Slim + [League Plates](https://platesphp.com/): view adapter, man
 - PHP 8.1+
 - `league/plates` ^3.6
 - `psr/http-message`
-- Slim 4 (suggested) for `url_for()` route integration
+- Slim 4 (suggested) for `url_for()` route integration and `psr/http-server-handler` (used by `AbstractViewContextMiddleware`; provided transitively by Slim)
+
+`psr/http-server-handler` is **not** a direct package dependency — it is a PSR interface only, and Slim apps already install it. Non-Slim consumers using the view-context middleware must provide it themselves.
 
 ---
 
@@ -180,6 +182,8 @@ Deploy hashed files and `manifest.json` to the CDN alongside (or instead of) the
 - [ ] Register `AssetHelper` with `manifestPath`, `baseUrl`, optional `queryVersion`
 - [ ] Call `PlatesBootstrap::registerAsset()` after container build
 - [ ] Call `$platesView->registerUrlFor($routeParser)` for named routes
+- [ ] Add app `ViewContextMiddleware` extending `AbstractViewContextMiddleware` (see below)
+- [ ] Register middleware in `conf/middleware.php`
 - [ ] Replace hardcoded `/assets/…?v=…` with `$this->asset('…')` in layouts
 - [ ] Production CI/deploy runs your asset build and publishes `public/assets/` (+ manifest)
 - [ ] (Optional) Keep `assetversion` only for non-manifest static files (favicon, etc.)
@@ -202,6 +206,54 @@ Documented for cross-project consistency. Listeners live in each app's `frontend
 | `launchModal` | `Responses::launchModal()` | App `modalFunctions.js` |
 
 See `Responses` in `src/Responses.php` for `withTriggers()`, `withToast()`, `launchModal()`, `launchModalWithToast()`, and `toastOnly()`.
+
+---
+
+## View context middleware (Phase 3)
+
+Skip Plates `addData()` for API and JSON-preferring requests. Guard logic lives in the package; each app supplies layout globals in `context()`.
+
+### RequestGuards
+
+| Method | Skips layout globals when… |
+|--------|----------------------------|
+| `isApiPath($request)` | Path is `/api`, starts with `/api/`, or contains `/api/` (e.g. `/backend/api/health`) |
+| `prefersJson($request)` | `Accept` header ranks `application/json` above `text/html` |
+| `isNonHtmlRequest($request)` | Either of the above |
+
+Fixi HTML partials under normal page paths still receive globals. JSON health checks and JSON API clients do not.
+
+### App middleware
+
+Extend `AbstractViewContextMiddleware` and implement `context()`:
+
+```php
+use NicmaxCarter\SlimPlates\Middleware\AbstractViewContextMiddleware;
+use Psr\Http\Message\ServerRequestInterface as Request;
+use Slim\Interfaces\RouteInterface;
+
+final class ViewContextMiddleware extends AbstractViewContextMiddleware
+{
+    protected function context(Request $request): array
+    {
+        $layoutData = ['uinfo' => [], 'darkmode' => ''];
+
+        $route = $request->getAttribute('__route__');
+        if ($route instanceof RouteInterface) {
+            $routeName = $route->getName();
+            if (is_string($routeName) && $routeName !== '') {
+                $layoutData['active'] = $routeName;
+            }
+        }
+
+        // … app-specific keys (uinfo, darkmode, flash, etc.)
+
+        return $layoutData;
+    }
+}
+```
+
+Register in DI with the shared `League\Plates\Engine` instance and add to the Slim middleware stack (before route handlers).
 
 ---
 
