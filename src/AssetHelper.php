@@ -27,11 +27,11 @@ class AssetHelper
      */
     public function __construct(
         private readonly ?string $manifestPath = null,
-        string $baseUrl = '/assets/',
+        private readonly string $baseUrl = '/assets/',
         private readonly ?string $assetsDirectory = null,
         private readonly ?string $queryVersion = null,
     ) {
-        $this->normalizedBaseUrl = $this->normalizeBaseUrl($baseUrl);
+        $this->normalizedBaseUrl = $this->normalizeBaseUrl($this->baseUrl);
     }
 
     /**
