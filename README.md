@@ -37,7 +37,7 @@ When stable, publish to Packagist and `composer require nicmaxcarter/slim-plates
 
 ---
 
-## Quick start — assets (Phase 1)
+## Quick start — assets
 
 ### 1. Register services
 
@@ -187,7 +187,8 @@ Deploy hashed files and `manifest.json` to the CDN alongside (or instead of) the
 - [ ] Register middleware in `conf/middleware.php`
 - [ ] Replace hardcoded `/assets/…?v=…` with `$this->asset('…')` in layouts
 - [ ] Production CI/deploy runs your asset build and publishes `public/assets/` (+ manifest)
-- [ ] (Optional) Keep `assetversion` only for non-manifest static files (favicon, etc.)
+
+Static files outside the manifest (favicon, images) can use a plain `/path` in templates.
 
 ---
 
@@ -210,7 +211,7 @@ See `Responses` in `src/Responses.php` for `withTriggers()`, `withToast()`, `lau
 
 ---
 
-## Redirect flash toasts (Phase 4)
+## Redirect flash toasts
 
 For full-page POST → redirect flows (login, PRG forms), response headers are not available to JavaScript. Use Slim Flash instead:
 
@@ -235,7 +236,7 @@ See minister-manager `docs/DEVELOPMENT_GUIDELINES.md` for the full pattern.
 
 ---
 
-## View context middleware (Phase 3)
+## View context middleware
 
 Skip Plates `addData()` for API and JSON-preferring requests. Guard logic lives in the package; each app supplies layout globals in `context()`.
 
@@ -285,12 +286,16 @@ Register in DI with the shared `League\Plates\Engine` instance and add to the Sl
 
 ## Extract to Packagist
 
-When Phases 0–5 are stable:
+When Phases 0–5 are stable in minister-manager:
 
-1. Copy `packages/nicmaxcarter/slim-plates/` to its own git repo
-2. Tag `v1.0.0` and register on Packagist
-3. Replace path autoload with `"nicmaxcarter/slim-plates": "^1.0"`
-4. No namespace or class renames should be required
+1. Copy or split `packages/nicmaxcarter/slim-plates/` to its own git repo
+2. Ensure `composer.json` has correct `name`, `description`, `license`, `require`, and `autoload`
+3. Tag `v1.0.0`
+4. Register on Packagist; enable GitHub hook
+5. In minister-manager: remove path autoload; add `"nicmaxcarter/slim-plates": "^1.0"`
+6. In portal (or other consumers): same require; wire bootstrap in `conf/app.php` / `conf/dependencies.php` and `public/index.php`
+
+No namespace or class renames should be required if Phases 0–5 followed the bridge plan.
 
 ---
 
