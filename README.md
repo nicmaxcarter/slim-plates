@@ -284,6 +284,22 @@ Register in DI with the shared `League\Plates\Engine` instance and add to the Sl
 
 ---
 
+## Layout key promotion
+
+`PlatesView::render()` and `fetch()` promote selected render params to Plates engine globals so layouts can read them without explicit `layout()` data:
+
+| Key | Typical source |
+|-----|----------------|
+| `pageTitle` | Controller render params |
+| `searchTerm` | Controller render params |
+| `active` | Controller render params or `ViewContextMiddleware::context()` |
+
+Plates `addData()` never clears keys — within a single request, a second render that omits `pageTitle` would otherwise keep the previous value. `PlatesView` resets each promoted key to `null` at the start of every `render()` / `fetch()`, then applies only the keys present in that call's `$data` array.
+
+Middleware globals (e.g. `uinfo`, `darkmode`) are unaffected; they are set once per request via `addData()` outside `PlatesView`.
+
+---
+
 ## Extract to Packagist
 
 When Phases 0–5 are stable in minister-manager:

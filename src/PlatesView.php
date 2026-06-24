@@ -75,7 +75,8 @@ class PlatesView
      * Promote layout-scoped render params to Plates globals.
      *
      * Plates layouts only receive engine globals and explicit layout() data,
-     * not the child template's render params.
+     * not the child template's render params. Keys are reset to null on each
+     * render/fetch so a later call cannot inherit values from an earlier one.
      *
      * @param array<string, mixed> $data
      */
@@ -84,14 +85,10 @@ class PlatesView
         $layoutData = [];
 
         foreach (self::LAYOUT_DATA_KEYS as $key) {
-            if (array_key_exists($key, $data)) {
-                $layoutData[$key] = $data[$key];
-            }
+            $layoutData[$key] = array_key_exists($key, $data) ? $data[$key] : null;
         }
 
-        if ($layoutData !== []) {
-            $this->plates->addData($layoutData);
-        }
+        $this->plates->addData($layoutData);
     }
 
     /**
