@@ -293,9 +293,11 @@ Register in DI with the shared `League\Plates\Engine` instance and add to the Sl
 |-----|----------------|
 | `pageTitle` | Controller render params |
 | `searchTerm` | Controller render params |
-| `active` | Controller render params or `ViewContextMiddleware::context()` |
+| `active` | `ViewContextMiddleware::context()` (route name); optional override via controller render params |
 
-Plates `addData()` never clears keys — within a single request, a second render that omits `pageTitle` would otherwise keep the previous value. `PlatesView` resets each promoted key to `null` at the start of every `render()` / `fetch()`, then applies only the keys present in that call's `$data` array.
+Plates `addData()` never clears keys — within a single request, a second render that omits `pageTitle` would otherwise keep the previous value. `PlatesView` resets each promoted key in `LAYOUT_DATA_KEYS` to `null` at the start of every `render()` / `fetch()`, then applies only the keys present in that call's `$data` array.
+
+`active` is not reset here: it is set once per request by view-context middleware from the matched route name. Controllers may still override it by passing `active` in render params.
 
 Middleware globals (e.g. `uinfo`, `darkmode`) are unaffected; they are set once per request via `addData()` outside `PlatesView`.
 

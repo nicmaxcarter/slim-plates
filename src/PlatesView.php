@@ -20,7 +20,6 @@ class PlatesView
     private const LAYOUT_DATA_KEYS = [
         'pageTitle',
         'searchTerm',
-        'active',
     ];
 
     private Engine $plates;
@@ -86,6 +85,10 @@ class PlatesView
 
         foreach (self::LAYOUT_DATA_KEYS as $key) {
             $layoutData[$key] = array_key_exists($key, $data) ? $data[$key] : null;
+        }
+
+        if (array_key_exists('active', $data)) {
+            $layoutData['active'] = $data['active'];
         }
 
         $this->plates->addData($layoutData);
