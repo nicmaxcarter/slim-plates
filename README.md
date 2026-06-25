@@ -199,7 +199,8 @@ Documented for cross-project consistency. Listeners live in each app's `frontend
 | Header | Purpose |
 |--------|---------|
 | `HX-Trigger-After-Settle` | JSON object or plain string event name |
-| `HX-Reswap: none` | Skip body swap for toast-only JSON responses |
+
+Toast-only fixi actions skip body swap via `fx-swap="none"` on the requesting element (not a response header).
 
 | Event name | Set by (package) | Handled by (app) |
 |------------|------------------|------------------|

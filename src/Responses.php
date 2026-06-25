@@ -16,8 +16,6 @@ final class Responses
 {
     public const HEADER_TRIGGER = 'HX-Trigger-After-Settle';
 
-    public const HEADER_RESWAP = 'HX-Reswap';
-
     /**
      * @param array<string, string|int|bool|array<mixed>> $triggers
      */
@@ -81,7 +79,6 @@ final class Responses
         $response = self::withToast($response, $type, $message);
 
         return $response
-            ->withHeader(self::HEADER_RESWAP, 'none')
             ->withHeader('Content-Type', 'application/json')
             ->withStatus($statusCode);
     }
