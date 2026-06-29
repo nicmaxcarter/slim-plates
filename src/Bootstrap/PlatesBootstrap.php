@@ -23,6 +23,16 @@ class PlatesBootstrap
     }
 
     /**
+     * Register $this->iconsSvg() using AssetHelper::iconsUrl().
+     */
+    public static function registerIconsSvg(Engine $plates, AssetHelper $helper): void
+    {
+        $plates->registerFunction('iconsSvg', function () use ($helper): string {
+            return $helper->iconsUrl();
+        });
+    }
+
+    /**
      * Register the bridge views folder for shared partials (e.g. flash-toasts).
      */
     public static function registerFlashToasts(Engine $plates): void

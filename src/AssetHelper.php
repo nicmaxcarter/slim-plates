@@ -35,6 +35,14 @@ class AssetHelper
     }
 
     /**
+     * Resolve icons.svg URL (manifest-mapped in production).
+     */
+    public function iconsUrl(): string
+    {
+        return $this->url('icons.svg');
+    }
+
+    /**
      * Resolve a logical asset name to a public URL.
      */
     public function url(string $logicalName): string

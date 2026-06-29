@@ -80,6 +80,7 @@ $platesView = $container->get(PlatesView::class);
 $assetHelper = $container->get(AssetHelper::class);
 
 PlatesBootstrap::registerAsset($platesView->getEngine(), $assetHelper);
+PlatesBootstrap::registerIconsSvg($platesView->getEngine(), $assetHelper);
 ```
 
 ### 3. Use in templates
@@ -87,6 +88,15 @@ PlatesBootstrap::registerAsset($platesView->getEngine(), $assetHelper);
 ```html
 <link rel="stylesheet" href="<?=$this->asset('style.css')?>" />
 <script src="<?=$this->asset('bundle.js')?>"></script>
+<script>
+    window.iconsSvgUrl = <?=json_encode($this->iconsSvg(), JSON_UNESCAPED_SLASHES) ?>;
+</script>
+```
+
+**Icons sprite:** generate `frontend/assets/icons.svg` (e.g. `npm run generate-icons`), emit via webpack manifest as `icons.svg`. Templates use `$this->iconsSvg()` or `partials/icon.phtml`; JS uses `createIconUse()` from `frontend/js/bundle/iconUse.js`.
+
+```html
+<?=$this->insert('partials/icon', ['name' => 'search', 'class' => 'text-gray-500', 'width' => '20', 'height' => '20']) ?>
 ```
 
 **Tip:** `npm run dev` removes `manifest.json` so PHP falls back to stable filenames while webpack watch runs.
@@ -128,7 +138,8 @@ Production builds should write `public/assets/manifest.json`:
 ```json
 {
   "bundle.js": "bundle.a1b2c3d4.js",
-  "style.css": "style.e5f6g7h8.css"
+  "style.css": "style.e5f6g7h8.css",
+  "icons.svg": "icons.a1b2c3d4.svg"
 }
 ```
 
@@ -181,6 +192,7 @@ Deploy hashed files and `manifest.json` to the CDN alongside (or instead of) the
 - [ ] Register `Engine` / `PlatesView` in DI
 - [ ] Register `AssetHelper` with `manifestPath`, `baseUrl`, optional `queryVersion`
 - [ ] Call `PlatesBootstrap::registerAsset()` after container build
+- [ ] Call `PlatesBootstrap::registerIconsSvg()` after container build (icon sprite URL)
 - [ ] Call `PlatesBootstrap::registerFlashToasts()` after container build (redirect toast partial)
 - [ ] Call `$platesView->registerUrlFor($routeParser)` for named routes
 - [ ] Add app `ViewContextMiddleware` extending `AbstractViewContextMiddleware` (see below)
