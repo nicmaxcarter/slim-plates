@@ -11,6 +11,8 @@ use Psr\Http\Message\ServerRequestInterface;
  */
 final class RequestGuards
 {
+    public const FIXI_CURRENT_URL_HEADER = 'FX-Current-URL';
+
     public static function isApiPath(ServerRequestInterface $request): bool
     {
         $path = self::requestPath($request);
@@ -42,6 +44,32 @@ final class RequestGuards
     public static function isFixiRequest(ServerRequestInterface $request): bool
     {
         return $request->getHeaderLine('FX-Request') === 'true';
+    }
+
+    /**
+     * Document URL from a fixi request (pathname + search of the page the user was viewing).
+     */
+    public static function fixiCurrentUrl(ServerRequestInterface $request): ?string
+    {
+        return self::safeInternalRedirectPath($request->getHeaderLine(self::FIXI_CURRENT_URL_HEADER));
+    }
+
+    /**
+     * Accept only same-origin relative paths suitable for post-login redirect.
+     */
+    public static function safeInternalRedirectPath(string $path): ?string
+    {
+        $path = trim($path);
+
+        if ($path === '' || $path === '/') {
+            return null;
+        }
+
+        if (!str_starts_with($path, '/') || str_starts_with($path, '//')) {
+            return null;
+        }
+
+        return $path;
     }
 
     public static function isNonHtmlRequest(ServerRequestInterface $request): bool

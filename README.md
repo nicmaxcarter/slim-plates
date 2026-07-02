@@ -260,7 +260,9 @@ Skip Plates `addData()` for API and JSON-preferring requests. Guard logic lives 
 | `isApiPath($request)` | Path is `/api`, starts with `/api/`, or contains `/api/` (e.g. `/backend/api/health`) |
 | `prefersJson($request)` | `Accept` header ranks `application/json` above `text/html` |
 | `isFixiRequest($request)` | Request includes `FX-Request: true` (fixi-js default on every partial update) |
-| `isNonHtmlRequest($request)` | Either of the above |
+| `fixiCurrentUrl($request)` | Validated `FX-Current-URL` header (document path for post-login redirect) |
+| `safeInternalRedirectPath($path)` | Same-origin relative path guard for redirect targets |
+| `isNonHtmlRequest($request)` | `isApiPath` or `prefersJson` |
 
 Fixi HTML partials under normal page paths still receive globals. JSON health checks and JSON API clients do not.
 
