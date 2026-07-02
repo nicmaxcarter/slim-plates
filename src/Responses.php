@@ -16,6 +16,8 @@ final class Responses
 {
     public const HEADER_TRIGGER = 'HX-Trigger-After-Settle';
 
+    public const HEADER_REDIRECT = 'HX-Redirect';
+
     /**
      * @param array<string, string|int|bool|array<mixed>> $triggers
      */
@@ -89,6 +91,21 @@ final class Responses
     public static function withTriggerValue(Response $response, string $triggerValue): Response
     {
         return $response->withHeader(self::HEADER_TRIGGER, $triggerValue);
+    }
+
+    /**
+     * Full-page redirect for unauthenticated fixi requests (no HTML swap).
+     *
+     * Consumed by app JS on `fx:after` before fixi applies the response body.
+     */
+    public static function fixiRedirect(
+        Response $response,
+        string $url,
+        int $statusCode = 401,
+    ): Response {
+        return $response
+            ->withStatus($statusCode)
+            ->withHeader(self::HEADER_REDIRECT, $url);
     }
 
     /**

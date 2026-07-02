@@ -39,6 +39,11 @@ final class RequestGuards
         return $jsonPriority > $htmlPriority;
     }
 
+    public static function isFixiRequest(ServerRequestInterface $request): bool
+    {
+        return $request->getHeaderLine('FX-Request') === 'true';
+    }
+
     public static function isNonHtmlRequest(ServerRequestInterface $request): bool
     {
         return self::isApiPath($request) || self::prefersJson($request);
