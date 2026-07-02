@@ -41,6 +41,9 @@ final class RequestGuards
         return $jsonPriority > $htmlPriority;
     }
 
+    /**
+     * Whether the request was issued by fixi-js (hypermedia partial update).
+     */
     public static function isFixiRequest(ServerRequestInterface $request): bool
     {
         return $request->getHeaderLine('FX-Request') === 'true';
@@ -65,11 +68,42 @@ final class RequestGuards
             return null;
         }
 
-        if (!str_starts_with($path, '/') || str_starts_with($path, '//')) {
+        if (!self::isSafeRelativePath($path)) {
+            return null;
+        }
+
+        $pathComponent = parse_url($path, PHP_URL_PATH);
+        if (!is_string($pathComponent) || $pathComponent === '' || $pathComponent === '/') {
+            return null;
+        }
+
+        if (!self::isSafeRelativePath($pathComponent)) {
+            return null;
+        }
+
+        if (self::containsEncodedPathSeparators($pathComponent)) {
             return null;
         }
 
         return $path;
+    }
+
+    private static function isSafeRelativePath(string $path): bool
+    {
+        if (!str_starts_with($path, '/') || str_starts_with($path, '//')) {
+            return false;
+        }
+
+        if (str_contains($path, '\\') || str_contains($path, '@')) {
+            return false;
+        }
+
+        return preg_match('/[\x00-\x1F\x7F]/', $path) !== 1;
+    }
+
+    private static function containsEncodedPathSeparators(string $path): bool
+    {
+        return preg_match('/%2[fF]|%5[cC]/', $path) === 1;
     }
 
     public static function isNonHtmlRequest(ServerRequestInterface $request): bool

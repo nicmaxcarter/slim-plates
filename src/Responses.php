@@ -6,6 +6,7 @@ namespace NicmaxCarter\SlimPlates;
 
 use InvalidArgumentException;
 use NicmaxCarter\SlimPlates\Flash\FlashToastKeys;
+use NicmaxCarter\SlimPlates\Middleware\RequestGuards;
 use Psr\Http\Message\ResponseInterface as Response;
 use Slim\Flash\Messages;
 
@@ -103,9 +104,17 @@ final class Responses
         string $url,
         int $statusCode = 401,
     ): Response {
+        $safeUrl = RequestGuards::safeInternalRedirectPath($url);
+
+        if ($safeUrl === null) {
+            throw new InvalidArgumentException(
+                'Fixi redirect URL must be a same-origin relative path'
+            );
+        }
+
         return $response
             ->withStatus($statusCode)
-            ->withHeader(self::HEADER_REDIRECT, $url);
+            ->withHeader(self::HEADER_REDIRECT, $safeUrl);
     }
 
     /**
