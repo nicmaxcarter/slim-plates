@@ -28,13 +28,14 @@ final class Responses
     }
 
     /**
+     * Preserve events with malformed UTF-8; reject other serialization failures.
+     *
      * @param array<string, string|int|bool|array<mixed>> $triggers
+     * @throws \JsonException
      */
     public static function encodeTriggers(array $triggers): string
     {
-        $encoded = json_encode($triggers);
-
-        return $encoded !== false ? $encoded : '';
+        return json_encode($triggers, JSON_INVALID_UTF8_SUBSTITUTE | JSON_THROW_ON_ERROR);
     }
 
     /**
@@ -50,11 +51,13 @@ final class Responses
         return self::withTriggers($response, [$eventName => $message ?? '']);
     }
 
+    /** Ask the app to open a modal after inserting its HTML. */
     public static function launchModal(Response $response): Response
     {
         return self::withTriggers($response, ['launchModal' => '']);
     }
 
+    /** Combine modal and toast events in one response header. */
     public static function launchModalWithToast(
         Response $response,
         string $type,
@@ -69,7 +72,7 @@ final class Responses
     }
 
     /**
-     * Toast-only JSON response (no body swap). Used for success/error fixi actions.
+     * Mark a toast-only response; the requesting element still needs fx-swap="none".
      *
      * @param array<mixed>|string|null $message
      */
@@ -144,6 +147,7 @@ final class Responses
             ->withHeader('Location', $url);
     }
 
+    /** Map supported toast types to the app's browser event names. */
     private static function toastEventName(string $type): string
     {
         return match ($type) {

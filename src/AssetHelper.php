@@ -58,6 +58,7 @@ class AssetHelper
         return $url;
     }
 
+    /** Reduce configured asset names to the flat manifest filename. */
     private function sanitizeLogicalName(string $logicalName): string
     {
         $logicalName = str_replace('\\', '/', $logicalName);
@@ -65,12 +66,16 @@ class AssetHelper
         return basename($logicalName);
     }
 
+    /** Use a usable manifest entry, otherwise keep the logical filename. */
     private function resolveFilename(string $logicalName): string
     {
         $manifest = $this->getManifest();
 
         if (isset($manifest[$logicalName])) {
             $hashed = $this->sanitizeManifestValue($manifest[$logicalName]);
+            if ($hashed === '') {
+                return $logicalName;
+            }
 
             if ($this->assetsDirectory === null || $this->assetExistsOnDisk($hashed)) {
                 return $hashed;
@@ -80,19 +85,17 @@ class AssetHelper
         return $logicalName;
     }
 
+    /** Version stable filenames, including fallbacks from stale manifests. */
     private function shouldAppendQueryVersion(string $logicalName, string $resolvedFilename): bool
     {
         if ($this->queryVersion === null || $this->queryVersion === '') {
             return false;
         }
 
-        if ($resolvedFilename !== $logicalName) {
-            return false;
-        }
-
-        return !isset($this->getManifest()[$logicalName]);
+        return $resolvedFilename === $logicalName;
     }
 
+    /** Check the configured local asset directory. */
     private function assetExistsOnDisk(string $filename): bool
     {
         if ($this->assetsDirectory === null || $this->assetsDirectory === '') {
@@ -104,6 +107,7 @@ class AssetHelper
         return is_file($path);
     }
 
+    /** Reduce manifest values to flat asset filenames. */
     private function sanitizeManifestValue(string $value): string
     {
         $value = str_replace('\\', '/', $value);
@@ -167,6 +171,7 @@ class AssetHelper
         return $manifest;
     }
 
+    /** Ensure a single trailing separator for generated asset URLs. */
     private function normalizeBaseUrl(string $baseUrl): string
     {
         if ($baseUrl === '') {

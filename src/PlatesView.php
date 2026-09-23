@@ -6,7 +6,7 @@ namespace NicmaxCarter\SlimPlates;
 
 use League\Plates\Engine;
 use Psr\Http\Message\ResponseInterface as Response;
-use Slim\Routing\RouteParser;
+use Slim\Interfaces\RouteParserInterface;
 
 /**
  * Plates View adapter for Slim Framework
@@ -105,7 +105,7 @@ class PlatesView
     /**
      * Register url_for function with router
      */
-    public function registerUrlFor(RouteParser $router): void
+    public function registerUrlFor(RouteParserInterface $router): void
     {
         $this->plates->registerFunction('url_for', function ($routeName, $data = [], $queryParams = []) use ($router) {
             try {

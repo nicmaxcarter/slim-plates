@@ -10,30 +10,45 @@ PHP bridge for Slim + [League Plates](https://platesphp.com/): view adapter, man
 
 - PHP 8.1+
 - `league/plates` ^3.6
-- `psr/http-message`
-- Slim 4 (suggested) for `url_for()` route integration and `psr/http-server-handler` (used by `AbstractViewContextMiddleware`; provided transitively by Slim)
+- `psr/http-message` ^1.0 or ^2.0
+- Slim 4 for the optional `url_for()` route integration
+- `slim/flash` for the optional redirect toast helpers
 
-`psr/http-server-handler` is **not** a direct package dependency — it is a PSR interface only, and Slim apps already install it. Non-Slim consumers using the view-context middleware must provide it themselves.
+Slim and Slim Flash are optional integrations, not installed automatically.
+`AbstractViewContextMiddleware` also needs `psr/http-server-handler`, which Slim
+already installs. Non-Slim applications using that middleware must provide it.
+Tests and development tools are development-only dependencies.
 
 ---
 
-## Installation (path repo / monorepo)
+## Installation
 
-In the consuming app's root `composer.json`:
-
-```json
-{
-  "autoload": {
-    "psr-4": {
-      "NicmaxCarter\\SlimPlates\\": "packages/nicmaxcarter/slim-plates/src/"
-    }
-  }
-}
+```bash
+composer require nicmaxcarter/slim-plates:^1.0
 ```
 
-Run `composer dump-autoload`.
+Composer registers the package namespace automatically. Remove any old manual
+`NicmaxCarter\\SlimPlates\\` autoload mapping when migrating from a copied package.
+Do not keep a local source copy alongside the installed release.
 
-When stable, publish to Packagist and `composer require nicmaxcarter/slim-plates`.
+## View setup
+
+Register the engine and adapter in your application's existing container. Use
+`phtml` explicitly; Plates otherwise defaults to `php`.
+
+```php
+use League\Plates\Engine;
+use NicmaxCarter\SlimPlates\PlatesView;
+
+$engine = new Engine(__DIR__ . '/templates', 'phtml');
+$platesView = new PlatesView($engine);
+$platesView->registerUrlFor($app->getRouteCollector()->getRouteParser());
+```
+
+Controllers call `$platesView->render($response, 'page', $data)` or
+`$platesView->fetch('page', $data)` to obtain a string. Templates can generate
+named-route links with `$this->url_for('route-name', $parameters, $query)`.
+Share the same engine with any view-context middleware.
 
 ---
 
@@ -45,6 +60,7 @@ In your DI container (example: PHP-DI):
 
 ```php
 use NicmaxCarter\SlimPlates\AssetHelper;
+use Psr\Container\ContainerInterface;
 
 AssetHelper::class => function (ContainerInterface $container) {
     $settings = $container->get('settings');
@@ -87,19 +103,19 @@ PlatesBootstrap::registerIconsSvg($platesView->getEngine(), $assetHelper);
 
 ```html
 <link rel="stylesheet" href="<?=$this->asset('style.css')?>" />
-<script src="<?=$this->asset('bundle.js')?>"></script>
 <script>
-    window.iconsSvgUrl = <?=json_encode($this->iconsSvg(), JSON_UNESCAPED_SLASHES) ?>;
+    window.iconsSvgUrl = <?=json_encode($this->iconsSvg(), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT)?>;
 </script>
+<script src="<?=$this->asset('bundle.js')?>" defer></script>
 ```
 
-**Icons sprite:** generate `frontend/assets/icons.svg` (e.g. `npm run generate-icons`), emit via webpack manifest as `icons.svg`. Templates use `$this->iconsSvg()` or `partials/icon.phtml`; JS uses `createIconUse()` from `frontend/js/bundle/iconUse.js`.
+**Icons sprite:** your app generates `icons.svg` and includes it in the asset
+manifest. This package provides its URL, not the sprite, icon partials, or JS.
+Set `window.iconsSvgUrl` before loading app scripts that use it.
 
-```html
-<?=$this->insert('partials/icon', ['name' => 'search', 'class' => 'text-gray-500', 'width' => '20', 'height' => '20']) ?>
-```
-
-**Tip:** `npm run dev` removes `manifest.json` so PHP falls back to stable filenames while webpack watch runs.
+**Development:** configure your app's development build to remove stale
+`manifest.json` files when switching back to stable filenames. This package does
+not provide npm scripts.
 
 ---
 
@@ -118,7 +134,13 @@ Resolution order for `$this->asset('bundle.js')`:
 | Static-only app (no npm) | Absent | `/assets/bundle.js` |
 | CDN in production | Present | `https://cdn.example.com/assets/bundle.a1b2c3d4.js` |
 
-No “uses npm” flag is required. Missing or unreadable manifest files are treated as an empty manifest (safe fallback).
+No “uses npm” flag is required. Missing, unreadable, or malformed manifests and
+empty mappings fall back to logical filenames. A configured `queryVersion` is
+applied whenever the resolved name is unchanged, including stale-manifest
+fallbacks. Hashed filenames do not receive it.
+
+Keys and values use flat filenames; subdirectories are not preserved. Helpers
+return complete URLs, so do not prepend another `/assets/` in templates.
 
 ### Constructor options
 
@@ -149,9 +171,9 @@ Production builds should write `public/assets/manifest.json`:
 
 Any build tool (Webpack, Vite, Rollup) can produce this shape. The PHP package only reads the JSON file.
 
-### Webpack example (minister-manager)
+### Example application build setup
 
-See the root `webpack.config.js`:
+Configure your application's build tool to use:
 
 - Production: `[contenthash:8]` in output filenames + `webpack-manifest-plugin` emitting logical → hashed mapping.
 - Development: stable `bundle.js` / `style.css`, no manifest plugin.
@@ -188,7 +210,7 @@ Deploy hashed files and `manifest.json` to the CDN alongside (or instead of) the
 
 ## Checklist — new project integration
 
-- [ ] PSR-4 autoload `NicmaxCarter\SlimPlates\`
+- [ ] Install the released package with Composer (no manual autoload mapping)
 - [ ] Register `Engine` / `PlatesView` in DI
 - [ ] Register `AssetHelper` with `manifestPath`, `baseUrl`, optional `queryVersion`
 - [ ] Call `PlatesBootstrap::registerAsset()` after container build
@@ -211,6 +233,8 @@ Documented for cross-project consistency. Listeners live in each app's `frontend
 | Header | Purpose |
 |--------|---------|
 | `HX-Trigger-After-Settle` | JSON object or plain string event name |
+| `HX-Redirect` | Full-page internal redirect; cancel the pending swap first |
+| `FX-Current-URL` (request) | App JS sends `location.pathname + location.search` for login returns |
 
 Toast-only fixi actions skip body swap via `fx-swap="none"` on the requesting element (not a response header).
 
@@ -220,7 +244,30 @@ Toast-only fixi actions skip body swap via `fx-swap="none"` on the requesting el
 | `notifyError` | `Responses::withToast(…, 'error')` | App `notifications.js` |
 | `launchModal` | `Responses::launchModal()` | App `modalFunctions.js` |
 
-See `Responses` in `src/Responses.php` for `withTriggers()`, `withToast()`, `launchModal()`, `launchModalWithToast()`, `toastOnly()`, `fixiRedirect()`, and `redirectWithToast()`.
+```php
+use NicmaxCarter\SlimPlates\Responses;
+
+return Responses::withTriggers($response, [
+    'notifySuccess' => 'Saved',
+    'reload-table' => '',
+]);
+```
+
+`withToast()` and `launchModalWithToast()` take **type before message**.
+Unsupported types throw `InvalidArgumentException`; they never default to
+success. `withTriggers()` replaces the event header, so combine events in one
+call rather than chaining helpers. Invalid UTF-8 is replaced during encoding;
+other non-JSON values throw `JsonException` instead of silently dropping events.
+
+The app's browser bridge must handle redirects and HTTP failures at `fx:after`,
+before insertion, and dispatch successful modal/reload events at `fx:swapped`,
+after insertion. Network failures arrive at `fx:error`. For Fixi 0.9.2,
+`fx:swapped` also fires for `fx-swap="none"`; cancelling `fx:after` skips it.
+Preserve input on failures and never automatically replay writes after a lost
+response. These protections are app responsibilities, not behavior supplied by
+PHP headers alone.
+
+See `src/Responses.php` for the complete helper signatures.
 
 ---
 
@@ -243,9 +290,18 @@ return Responses::redirectWithToast(
 
 **Package:** `FlashToastKeys`, `redirectWithToast()`, `bridge::partials/flash-toasts` (meta tags only).
 
-**App:** Register `$flash` in Plates globals; insert the partial in layout `<head>`; implement `flashToasts.js` (or equivalent) to read meta tags and call your toast helpers on page load. Redirect to the final HTML page — intermediate 302s clear flash before the toast runs.
+**App:** Call `PlatesBootstrap::registerFlashToasts($engine)`, make `$flash`
+available to the layout, and insert the partial once in `<head>`:
 
-See minister-manager `docs/DEVELOPMENT_GUIDELINES.md` for the full pattern.
+```php
+<?php $this->insert("bridge::partials/flash-toasts", ["flash" => $flash]) ?>
+```
+
+Plates partials do not inherit their caller's local variables, so pass `flash`
+explicitly. The partial emits escaped metadata for the first message of each
+type, not JavaScript. Provide one browser consumer to show those messages on
+page load. Redirect to the final HTML page: initializing Slim Flash on
+intermediate redirects can consume messages before they are displayed.
 
 ---
 
@@ -255,16 +311,27 @@ Skip Plates `addData()` for API and JSON-preferring requests. Guard logic lives 
 
 ### RequestGuards
 
-| Method | Skips layout globals when… |
+| Method | Behavior |
 |--------|----------------------------|
 | `isApiPath($request)` | Path is `/api`, starts with `/api/`, or contains `/api/` (e.g. `/backend/api/health`) |
-| `prefersJson($request)` | `Accept` header ranks `application/json` above `text/html` |
+| `prefersJson($request)` | JSON ranks above HTML, honoring wildcard ranges and specific overrides; ties favor HTML |
 | `isFixiRequest($request)` | Request includes `FX-Request: true` (fixi-js default on every partial update) |
 | `fixiCurrentUrl($request)` | Validated `FX-Current-URL` header (document path for post-login redirect) |
 | `safeInternalRedirectPath($path)` | Same-origin relative path guard for redirect targets |
 | `isNonHtmlRequest($request)` | `isApiPath` or `prefersJson` |
 
-Fixi HTML partials under normal page paths still receive globals. JSON health checks and JSON API clients do not.
+Fixi HTML partials under normal page paths still receive globals. JSON health
+checks and JSON-preferring clients do not. `/api/` classification is a convention,
+not proof of the response type: move HTML endpoints out of that prefix or apply
+app-specific classification before adopting this middleware.
+
+After trimming surrounding whitespace, the redirect guard rejects `/`, absolute
+and protocol-relative URLs, backslashes, `@`, control characters, and encoded
+path separators. Encoded
+separators in query strings are allowed. It does not decide whether a path is an
+authorized page or prevent login loops. The app must choose safe page returns,
+exclude login/logout/action endpoints, and enforce authentication and company
+access. The package does not manage sessions or replay submitted requests.
 
 ### App middleware
 
@@ -316,20 +383,39 @@ Plates `addData()` never clears keys — within a single request, a second rende
 
 Middleware globals (e.g. `uinfo`, `darkmode`) are unaffected; they are set once per request via `addData()` outside `PlatesView`.
 
+The engine and adapter are request-scoped. Applications using long-lived workers
+must create fresh request-scoped instances rather than carry user/company data
+into another request.
+
 ---
 
-## Extract to Packagist
+## Development and releases
 
-When Phases 0–5 are stable in minister-manager:
+```bash
+composer install
+composer check
+```
 
-1. Copy or split `packages/nicmaxcarter/slim-plates/` to its own git repo
-2. Ensure `composer.json` has correct `name`, `description`, `license`, `require`, and `autoload`
-3. Tag `v1.0.0`
-4. Register on Packagist; enable GitHub hook
-5. In minister-manager: remove path autoload; add `"nicmaxcarter/slim-plates": "^1.0"`
-6. In portal (or other consumers): same require; wire bootstrap in `conf/app.php` / `conf/dependencies.php` and `public/index.php`
+`composer check` validates package metadata, runs PHPUnit regressions, and checks
+source and tests at PHPStan level 9. Tests use real Plates rendering, temporary
+asset files, Slim responses, and flash storage; no application database or
+browser is needed. PHP-only tests do not certify an application's Fixi bridge.
 
-No namespace or class renames should be required if Phases 0–5 followed the bridge plan.
+CI runs on PHP 8.1–8.5 and exercises both supported PSR HTTP message major
+versions. The library does not commit `composer.lock`; CI resolves dependencies
+for each supported environment. `vendor/` and local test/analyser caches are
+ignored.
+
+Before publishing a new tag:
+
+1. Run `composer check` and confirm CI passes.
+2. Confirm the distribution includes `src/`, `views/partials/flash-toasts.phtml`,
+   `composer.json`, and `LICENSE`.
+3. Record consumer-visible behavior changes in [CHANGELOG.md](CHANGELOG.md) and
+   publish a new version; never move an existing tag.
+4. Update consuming apps deliberately and verify their actual browser flows.
+   Installing this package does not replace app-owned JavaScript, authentication,
+   company permissions, or Portal-specific response helpers.
 
 ---
 

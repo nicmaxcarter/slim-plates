@@ -13,6 +13,7 @@ final class RequestGuards
 {
     public const FIXI_CURRENT_URL_HEADER = 'FX-Current-URL';
 
+    /** Identify the conventional API path segment. */
     public static function isApiPath(ServerRequestInterface $request): bool
     {
         $path = self::requestPath($request);
@@ -22,6 +23,7 @@ final class RequestGuards
             || str_contains($path, '/api/');
     }
 
+    /** Compare JSON and HTML acceptability, with specific ranges taking precedence. */
     public static function prefersJson(ServerRequestInterface $request): bool
     {
         $accept = $request->getHeaderLine('Accept');
@@ -30,13 +32,19 @@ final class RequestGuards
         }
 
         $priorities = self::parseAcceptHeader($accept);
-        $jsonPriority = $priorities['application/json'] ?? 0.0;
+        $jsonPriority = $priorities['application/json']
+            ?? $priorities['application/*']
+            ?? $priorities['*/*']
+            ?? 0.0;
 
         if ($jsonPriority <= 0.0) {
             return false;
         }
 
-        $htmlPriority = $priorities['text/html'] ?? 0.0;
+        $htmlPriority = $priorities['text/html']
+            ?? $priorities['text/*']
+            ?? $priorities['*/*']
+            ?? 0.0;
 
         return $jsonPriority > $htmlPriority;
     }
@@ -88,6 +96,7 @@ final class RequestGuards
         return $path;
     }
 
+    /** Reject external URL forms and unsafe characters before parsing. */
     private static function isSafeRelativePath(string $path): bool
     {
         if (!str_starts_with($path, '/') || str_starts_with($path, '//')) {
@@ -101,16 +110,19 @@ final class RequestGuards
         return preg_match('/[\x00-\x1F\x7F]/', $path) !== 1;
     }
 
+    /** Detect separators that a later URL decoder could reinterpret. */
     private static function containsEncodedPathSeparators(string $path): bool
     {
         return preg_match('/%2[fF]|%5[cC]/', $path) === 1;
     }
 
+    /** Apply the conventional path and Accept-header guards to layout context. */
     public static function isNonHtmlRequest(ServerRequestInterface $request): bool
     {
         return self::isApiPath($request) || self::prefersJson($request);
     }
 
+    /** Normalize a missing or relative request path for segment matching. */
     private static function requestPath(ServerRequestInterface $request): string
     {
         $path = $request->getUri()->getPath();
