@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## v1.0.1
 
 - Keep `queryVersion` on stable asset URLs when a manifest is stale, empty, or
   maps to the logical filename; ignore empty CDN manifest mappings.
